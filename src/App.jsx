@@ -5,6 +5,7 @@ import Footer from './components/Footer';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import Sessions from './pages/Sessions';
+import Classroom from './pages/Classroom';
 import Chat from './pages/Chat';
 import Feed from './pages/Feed';
 import Leaderboard from './pages/Leaderboard';
@@ -19,8 +20,9 @@ import ResetPassword from './pages/ResetPassword';
 export default function App() {
   const location = useLocation();
 
-  // Hide nav & footer on auth screens
+  // Hide nav & footer on auth screens and full-screen classroom
   const isAuthPage = ['/login', '/forgot-password', '/reset-password'].includes(location.pathname);
+  const isClassroom = location.pathname.startsWith('/room');
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground selection:bg-primary/30 selection:text-primary-foreground">
@@ -31,6 +33,8 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/sessions" element={<Sessions />} />
+          <Route path="/room" element={<Classroom />} />
+          <Route path="/room/:sessionId" element={<Classroom />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/chat/:userId" element={<Chat />} />
           <Route path="/feed" element={<Feed />} />
@@ -47,7 +51,7 @@ export default function App() {
         </Routes>
       </main>
 
-      {!isAuthPage && <Footer />}
+      {!isAuthPage && !isClassroom && <Footer />}
     </div>
   );
 }

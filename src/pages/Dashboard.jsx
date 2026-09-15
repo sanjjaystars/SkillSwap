@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Search,
   Filter,
@@ -11,6 +11,8 @@ import {
   X,
   Clock,
   Video,
+  BookOpen,
+  Tv,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import SkillTag from '../components/SkillTag';
@@ -18,7 +20,8 @@ import StarRating from '../components/StarRating';
 import StreakIndicator from '../components/StreakIndicator';
 
 export default function Dashboard() {
-  const { user, peers, scheduleSession } = useApp();
+  const navigate = useNavigate();
+  const { user, peers, scheduleSession, startInstantMeet } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [modalPeer, setModalPeer] = useState(null);
@@ -30,7 +33,6 @@ export default function Dashboard() {
 
   const categories = ['All', 'Python & AI', 'Frontend & React', 'UI/UX Design', 'DevOps & Cloud'];
 
-  // Filter peers based on search query and category
   const filteredPeers = peers.filter((peer) => {
     const matchesSearch =
       peer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -70,7 +72,7 @@ export default function Dashboard() {
     e.preventDefault();
     if (!modalPeer || !sessionTopic.trim()) return;
 
-    scheduleSession(
+    const newSess = scheduleSession(
       modalPeer.id,
       sessionTopic,
       skillOffered,
@@ -78,16 +80,25 @@ export default function Dashboard() {
       sessionDuration
     );
 
-    setSuccessToast(`Session with ${modalPeer.name} scheduled! +100 XP gained.`);
+    setSuccessToast(`Session with ${modalPeer.name} scheduled! Google Meet link generated.`);
     setModalPeer(null);
     setSessionTopic('');
     setTimeout(() => setSuccessToast(''), 4000);
   };
 
+  const handleStartInstantCall = (peer) => {
+    const session = startInstantMeet(
+      peer.id,
+      `Instant 1:1 Skill Exchange with ${peer.name}`
+    );
+    window.open(session.meetUrl, '_blank');
+    navigate(`/room/${session.id}`);
+  };
+
   return (
     <div className="min-h-screen bg-background pt-20 pb-20 px-4">
       <div className="container mx-auto max-w-6xl">
-        {/* Success Toast */}
+        {/* Toast */}
         {successToast && (
           <div className="mb-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm font-medium flex items-center justify-between shadow-lg">
             <span className="flex items-center gap-2">
@@ -100,21 +111,21 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Header Greeting Banner */}
+        {/* Greeting Banner */}
         <div className="rounded-3xl border border-border/80 bg-gradient-to-r from-card via-card to-secondary/30 p-6 sm:p-8 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                 Level {user.level} Mentor
               </span>
-              <span className="text-xs text-muted-foreground">• Matching Engine Active</span>
+              <span className="text-xs text-muted-foreground">• Live Matching Active</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-display font-extrabold text-foreground">
               Welcome back, {user.name}! 👋
             </h1>
             <p className="text-sm text-muted-foreground max-w-xl">
-              You are currently offering to teach <strong className="text-foreground">{user.skillsToTeach.slice(0, 3).join(', ')}</strong>.
-              Here are peers ready for reciprocal skill exchange today.
+              You teach <strong className="text-foreground">{user.skillsToTeach.slice(0, 3).join(', ')}</strong>.
+              Connect directly via Google Meet or schedule a reciprocal learning session below.
             </p>
           </div>
 
@@ -125,18 +136,18 @@ export default function Dashboard() {
               className="px-4 py-2 rounded-xl bg-primary text-primary-foreground font-semibold text-xs hover:bg-primary/90 transition-all flex items-center gap-2 shadow-md shadow-primary/20"
             >
               <Calendar className="w-3.5 h-3.5" />
-              <span>View Sessions</span>
+              <span>My Sessions</span>
             </Link>
           </div>
         </div>
 
-        {/* Search & Categories Bar */}
+        {/* Search & Categories */}
         <div className="space-y-4 mb-8">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search by peer name, skill offered, or skill desired (e.g. Python, Figma, React)..."
+              placeholder="Search peers by name or skill (e.g. Python, Figma, React, Docker)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-11 pr-4 py-3 rounded-2xl bg-card border border-border/80 text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
@@ -160,15 +171,15 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Peers Matching Grid */}
+        {/* Peers Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredPeers.map((peer) => (
             <div
               key={peer.id}
-              className="rounded-2xl border border-border/80 bg-card p-6 flex flex-col justify-between hover:border-primary/40 transition-all hover:shadow-xl hover:shadow-primary/5 group"
+              className="rounded-3xl border border-border/80 bg-card p-6 flex flex-col justify-between hover:border-primary/40 transition-all hover:shadow-xl hover:shadow-primary/5 group"
             >
               <div>
-                {/* Peer Header */}
+                {/* Header */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="relative">
@@ -224,11 +235,21 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Card Footer */}
-              <div className="pt-4 border-t border-border/60 flex items-center justify-between">
+              {/* Actions */}
+              <div className="pt-4 border-t border-border/60 flex items-center justify-between gap-2">
                 <StarRating rating={peer.rating} />
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  {/* Instant Meet */}
+                  <button
+                    onClick={() => handleStartInstantCall(peer)}
+                    className="p-2 rounded-xl bg-emerald-600/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-600/25 transition-colors"
+                    title="Launch Google Meet Call Now"
+                  >
+                    <Video className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* Chat */}
                   <Link
                     to={`/chat/${peer.id}`}
                     className="p-2 rounded-xl border border-border bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
@@ -237,12 +258,13 @@ export default function Dashboard() {
                     <MessageSquare className="w-3.5 h-3.5" />
                   </Link>
 
+                  {/* Schedule */}
                   <button
                     onClick={() => {
                       setModalPeer(peer);
                       setSessionTopic(`Reciprocal Exchange: ${peer.skillsToTeach[0]} ↔ ${user.skillsToTeach[0]}`);
                     }}
-                    className="px-3.5 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-all flex items-center gap-1.5 shadow-sm"
+                    className="px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-all flex items-center gap-1 shadow-sm"
                   >
                     <Calendar className="w-3.5 h-3.5" />
                     <span>Swap</span>
@@ -253,22 +275,7 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {filteredPeers.length === 0 && (
-          <div className="text-center py-20 rounded-3xl border border-border/80 bg-card/40">
-            <p className="text-muted-foreground text-sm">No peers found matching &quot;{searchQuery}&quot;.</p>
-            <button
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedCategory('All');
-              }}
-              className="mt-3 text-xs text-primary font-semibold hover:underline"
-            >
-              Clear filters
-            </button>
-          </div>
-        )}
-
-        {/* Schedule Session Modal */}
+        {/* Schedule Modal */}
         {modalPeer && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
             <div className="w-full max-w-lg rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-2xl relative">
@@ -288,7 +295,7 @@ export default function Dashboard() {
                     Schedule Skill Exchange
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    Coordinating with <strong className="text-foreground">{modalPeer.name}</strong>
+                    Google Meet will be automatically generated for you and <strong className="text-foreground">{modalPeer.name}</strong>.
                   </p>
                 </div>
               </div>
@@ -370,7 +377,7 @@ export default function Dashboard() {
                     className="px-5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-all shadow-md shadow-primary/20 flex items-center gap-1.5"
                   >
                     <Video className="w-3.5 h-3.5" />
-                    <span>Confirm Session</span>
+                    <span>Confirm & Generate Meet</span>
                   </button>
                 </div>
               </form>

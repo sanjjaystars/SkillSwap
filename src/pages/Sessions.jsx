@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Calendar as CalendarIcon,
   Video,
@@ -9,13 +9,21 @@ import {
   ExternalLink,
   Plus,
   Star,
+  Sparkles,
+  Trash2,
+  Tv,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import StarRating from '../components/StarRating';
 
 export default function Sessions() {
-  const { sessions, user } = useApp();
+  const navigate = useNavigate();
+  const { sessions, user, completeSession, cancelSession, startInstantMeet, peers } = useApp();
   const [activeTab, setActiveTab] = useState('all');
+  const [reviewModalSession, setReviewModalSession] = useState(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewFeedback, setReviewFeedback] = useState('');
+  const [toastMsg, setToastMsg] = useState('');
 
   const filteredSessions = sessions.filter((s) => {
     if (activeTab === 'upcoming') return s.status === 'upcoming';
@@ -23,9 +31,38 @@ export default function Sessions() {
     return true;
   });
 
+  const handleStartInstantCall = () => {
+    const defaultPeer = peers[0];
+    const sess = startInstantMeet(defaultPeer.id, `Instant 1:1 Exchange: ${user.skillsToTeach[0]}`);
+    setToastMsg(`Instant Google Meet generated for ${defaultPeer.name}!`);
+    setTimeout(() => {
+      navigate(`/room/${sess.id}`);
+    }, 1000);
+  };
+
+  const handleCompleteSubmit = (e) => {
+    e.preventDefault();
+    if (!reviewModalSession) return;
+    completeSession(reviewModalSession.id, reviewRating, reviewFeedback);
+    setToastMsg(`Session completed! +150 XP gained & streak updated.`);
+    setReviewModalSession(null);
+    setReviewFeedback('');
+    setTimeout(() => setToastMsg(''), 4000);
+  };
+
   return (
     <div className="min-h-screen bg-background pt-20 pb-20 px-4">
       <div className="container mx-auto max-w-5xl">
+        {/* Toast */}
+        {toastMsg && (
+          <div className="mb-6 p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-sm font-semibold flex items-center justify-between shadow-lg">
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" />
+              {toastMsg}
+            </span>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
@@ -33,20 +70,30 @@ export default function Sessions() {
               Peer Learning Hub
             </span>
             <h1 className="text-2xl sm:text-3xl font-display font-extrabold text-foreground mt-1">
-              My Skill Sessions
+              My Skill Sessions & Meetings
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Coordinate and track your reciprocal 1:1 learning appointments.
+              Connect via Google Meet or our integrated interactive virtual classroom.
             </p>
           </div>
 
-          <Link
-            to="/dashboard"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-all shadow-md shadow-primary/20 self-start sm:self-auto"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Schedule New Exchange</span>
-          </Link>
+          <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+            <button
+              onClick={handleStartInstantCall}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-500 transition-all shadow-md shadow-emerald-600/20"
+            >
+              <Video className="w-4 h-4" />
+              <span>Instant Google Meet</span>
+            </button>
+
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-all shadow-md shadow-primary/20"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Schedule Exchange</span>
+            </Link>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -77,10 +124,10 @@ export default function Sessions() {
             return (
               <div
                 key={session.id}
-                className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 transition-all hover:border-primary/40 hover:shadow-lg"
+                className="rounded-3xl border border-border/80 bg-card p-5 sm:p-6 transition-all hover:border-primary/40 hover:shadow-xl"
               >
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  {/* Left Peer & Topic Info */}
+                  {/* Left: Peer info */}
                   <div className="flex items-start gap-4">
                     <img
                       src={session.peerAvatar}
@@ -98,20 +145,20 @@ export default function Sessions() {
                               : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                           }`}
                         >
-                          {isUpcoming ? 'Upcoming' : 'Completed'}
+                          {isUpcoming ? 'Scheduled' : 'Completed'}
                         </span>
                       </div>
                       <h3 className="text-base font-display font-bold text-foreground">
                         {session.topic}
                       </h3>
                       <p className="text-xs text-muted-foreground">
-                        Skill exchanged: <strong className="text-foreground">{session.skillExchanged}</strong>
+                        Exchanged for: <strong className="text-foreground">{session.skillExchanged}</strong>
                       </p>
                     </div>
                   </div>
 
-                  {/* Right Timing & Actions */}
-                  <div className="flex flex-wrap items-center gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-border/50">
+                  {/* Right: Date & Launch Actions */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-border/50">
                     <div className="text-xs text-muted-foreground space-y-1 md:text-right mr-2">
                       <div className="flex items-center md:justify-end gap-1.5 font-medium text-foreground">
                         <CalendarIcon className="w-3.5 h-3.5 text-primary" />
@@ -123,38 +170,74 @@ export default function Sessions() {
                       </div>
                     </div>
 
-                    <Link
-                      to={`/chat/${session.peerId}`}
-                      className="p-2.5 rounded-xl border border-border bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                      title="Open Chat"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                    </Link>
-
-                    {isUpcoming ? (
-                      <a
-                        href={session.meetUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold text-xs hover:bg-emerald-500 transition-all flex items-center gap-1.5 shadow-md shadow-emerald-600/20"
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Link
+                        to={`/chat/${session.peerId}`}
+                        className="p-2.5 rounded-xl border border-border bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                        title="Chat"
                       >
-                        <Video className="w-3.5 h-3.5" />
-                        <span>Join Call</span>
-                        <ExternalLink className="w-3 h-3 ml-0.5" />
-                      </a>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        {session.rating && <StarRating rating={session.rating} />}
-                      </div>
-                    )}
+                        <MessageSquare className="w-4 h-4" />
+                      </Link>
+
+                      {isUpcoming ? (
+                        <>
+                          {/* Enter Virtual Classroom */}
+                          <Link
+                            to={`/room/${session.id}`}
+                            className="px-3.5 py-2 rounded-xl bg-primary text-primary-foreground font-semibold text-xs hover:bg-primary/90 transition-all flex items-center gap-1.5 shadow-md shadow-primary/20"
+                          >
+                            <Tv className="w-3.5 h-3.5" />
+                            <span>Virtual Classroom</span>
+                          </Link>
+
+                          {/* Open Google Meet Window */}
+                          <a
+                            href={session.meetUrl || 'https://meet.google.com/new'}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-3 py-2 rounded-xl bg-emerald-600/15 border border-emerald-500/30 text-emerald-400 font-semibold text-xs hover:bg-emerald-600/25 transition-all flex items-center gap-1.5"
+                            title="Launch in Google Meet"
+                          >
+                            <Video className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Google Meet</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+
+                          {/* Mark Complete */}
+                          <button
+                            onClick={() => setReviewModalSession(session)}
+                            className="p-2 rounded-xl border border-border hover:bg-secondary text-xs text-muted-foreground hover:text-emerald-400 transition-colors"
+                            title="Mark as Complete"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                          </button>
+
+                          {/* Cancel */}
+                          <button
+                            onClick={() => cancelSession(session.id)}
+                            className="p-2 rounded-xl border border-border hover:bg-red-500/10 text-xs text-muted-foreground hover:text-red-400 transition-colors"
+                            title="Cancel Session"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          {session.rating && <StarRating rating={session.rating} />}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* Completed feedback review if present */}
+                {/* Feedback Review */}
                 {session.feedback && (
-                  <div className="mt-4 pt-3 border-t border-border/60 text-xs text-muted-foreground bg-secondary/30 rounded-xl p-3">
-                    <span className="font-semibold text-foreground">Peer Feedback: </span>
-                    &quot;{session.feedback}&quot;
+                  <div className="mt-4 pt-3 border-t border-border/60 text-xs text-muted-foreground bg-secondary/30 rounded-2xl p-3 flex items-start gap-2">
+                    <Star className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-semibold text-foreground">Peer Feedback Review: </span>
+                      &quot;{session.feedback}&quot;
+                    </div>
                   </div>
                 )}
               </div>
@@ -162,12 +245,81 @@ export default function Sessions() {
           })}
 
           {filteredSessions.length === 0 && (
-            <div className="text-center py-16 rounded-2xl border border-border/80 bg-card p-6">
+            <div className="text-center py-20 rounded-3xl border border-border/80 bg-card p-6">
               <CalendarIcon className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No sessions in this category yet.</p>
+              <p className="text-sm text-muted-foreground">No sessions in this view.</p>
+              <button
+                onClick={handleStartInstantCall}
+                className="mt-3 inline-flex items-center gap-1.5 text-xs text-primary font-semibold hover:underline"
+              >
+                Start an instant Google Meet now
+              </button>
             </div>
           )}
         </div>
+
+        {/* Review Submission Modal */}
+        {reviewModalSession && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
+            <div className="w-full max-w-md rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-2xl relative">
+              <h3 className="text-lg font-display font-bold text-foreground mb-1">
+                Complete Session & Review
+              </h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                Leave feedback for <strong className="text-foreground">{reviewModalSession.peerName}</strong> on &quot;{reviewModalSession.topic}&quot;.
+              </p>
+
+              <form onSubmit={handleCompleteSubmit} className="space-y-4">
+                <div className="flex justify-center gap-2 py-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewRating(star)}
+                      className="p-1 hover:scale-110 transition-transform"
+                    >
+                      <Star
+                        className={`w-7 h-7 ${
+                          star <= reviewRating ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/30'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-foreground mb-1.5 block">
+                    Feedback & Comments
+                  </label>
+                  <textarea
+                    rows={3}
+                    required
+                    value={reviewFeedback}
+                    onChange={(e) => setReviewFeedback(e.target.value)}
+                    placeholder="Describe what was taught and how the peer exchange helped you..."
+                    className="w-full p-3 rounded-xl bg-secondary/50 border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setReviewModalSession(null)}
+                    className="px-4 py-2 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90"
+                  >
+                    Confirm & Submit (+150 XP)
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
