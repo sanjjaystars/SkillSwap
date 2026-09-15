@@ -28,6 +28,11 @@ export default function Classroom() {
   const navigate = useNavigate();
   const { sessions, user, completeSession } = useApp();
 
+  const currentUser = user || {
+    name: 'You',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+  };
+
   const session = sessions.find((s) => s.id === sessionId) || sessions[0] || {
     id: 'demo-session',
     peerName: 'Prince',
@@ -67,7 +72,7 @@ print("Session Active:", result)
   // In-call chat
   const [inCallChat, setInCallChat] = useState([
     { sender: session.peerName, text: "Hey! Can you hear me loud and clear?", time: "Just now" },
-    { sender: user.name, text: "Yes! Audio is crystal clear. Let's dive into the code walkthrough.", time: "Just now" },
+    { sender: currentUser.name, text: "Yes! Audio is crystal clear. Let's dive into the code walkthrough.", time: "Just now" },
   ]);
   const [chatInput, setChatInput] = useState('');
 
@@ -103,7 +108,7 @@ print("Session Active:", result)
     if (!chatInput.trim()) return;
     setInCallChat((prev) => [
       ...prev,
-      { sender: user.name, text: chatInput, time: 'Just now' },
+      { sender: currentUser.name, text: chatInput, time: 'Just now' },
     ]);
     setChatInput('');
   };
@@ -126,8 +131,12 @@ print("Session Active:", result)
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
-  const handleSubmitReview = () => {
-    completeSession(session.id, rating, reviewFeedback);
+  const handleSubmitReview = async () => {
+    try {
+      await completeSession(session.id, rating, reviewFeedback);
+    } catch (err) {
+      console.error(err);
+    }
     setShowReviewModal(false);
     navigate('/sessions');
   };
@@ -143,7 +152,7 @@ print("Session Active:", result)
               {session.topic}
             </h1>
             <p className="text-[11px] text-muted-foreground">
-              Teacher: <strong className="text-foreground">{user.name}</strong> ↔ Learner: <strong className="text-foreground">{session.peerName}</strong>
+              Teacher: <strong className="text-foreground">{currentUser.name}</strong> ↔ Learner: <strong className="text-foreground">{session.peerName}</strong>
             </p>
           </div>
         </div>
@@ -221,7 +230,7 @@ print("Session Active:", result)
               <div className="flex items-center justify-between z-10">
                 <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-[11px] font-semibold text-white flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-blue-400" />
-                  {user.name} (Teaching)
+                  {currentUser.name} (Teaching)
                 </span>
                 <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 text-[10px] font-bold border border-blue-500/30">
                   Host
@@ -233,8 +242,8 @@ print("Session Active:", result)
                 {isVideoOn ? (
                   <div className="relative">
                     <img
-                      src={user.avatar}
-                      alt={user.name}
+                      src={currentUser.avatar}
+                      alt={currentUser.name}
                       className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover ring-4 ring-blue-500/30 shadow-2xl"
                     />
                     <span className="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-blue-500 ring-2 ring-slate-900 flex items-center justify-center text-[10px] text-white font-bold">
@@ -440,7 +449,7 @@ print("Session Active:", result)
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {inCallChat.map((msg, i) => {
-                const isMe = msg.sender === user.name;
+                const isMe = msg.sender === currentUser.name;
                 return (
                   <div key={i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                     <span className="text-[10px] text-muted-foreground mb-0.5">

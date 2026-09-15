@@ -18,12 +18,13 @@ import StarRating from '../components/StarRating';
 
 export default function Sessions() {
   const navigate = useNavigate();
-  const { sessions, user, completeSession, cancelSession, startInstantMeet, peers } = useApp();
+  const { sessions, user, completeSession, cancelSession, startInstantMeet, peers, dataLoading } = useApp();
   const [activeTab, setActiveTab] = useState('all');
   const [reviewModalSession, setReviewModalSession] = useState(null);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewFeedback, setReviewFeedback] = useState('');
   const [toastMsg, setToastMsg] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
 
   const filteredSessions = sessions.filter((s) => {
     if (activeTab === 'upcoming') return s.status === 'upcoming';
@@ -31,23 +32,48 @@ export default function Sessions() {
     return true;
   });
 
-  const handleStartInstantCall = () => {
-    const defaultPeer = peers[0];
-    const sess = startInstantMeet(defaultPeer.id, `Instant 1:1 Exchange: ${user.skillsToTeach[0]}`);
-    setToastMsg(`Instant Google Meet generated for ${defaultPeer.name}!`);
-    setTimeout(() => {
-      navigate(`/room/${sess.id}`);
-    }, 1000);
+  const handleStartInstantCall = async () => {
+    const targetPeer = peers[0] || { id: 'peer-instant', name: 'Study Peer' };
+    const skillName = user?.skillsToTeach?.[0] || 'Skill Exchange';
+    try {
+      const sess = await startInstantMeet(targetPeer.id, `Instant 1:1 Exchange: ${skillName}`);
+      if (sess?.meetUrl) {
+        setToastMsg(`Instant Google Meet generated for ${targetPeer.name}!`);
+        window.open(sess.meetUrl, '_blank');
+        setTimeout(() => {
+          navigate(`/room/${sess.id}`);
+        }, 800);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const handleCompleteSubmit = (e) => {
+  const handleCompleteSubmit = async (e) => {
     e.preventDefault();
     if (!reviewModalSession) return;
-    completeSession(reviewModalSession.id, reviewRating, reviewFeedback);
-    setToastMsg(`Session completed! +150 XP gained & streak updated.`);
-    setReviewModalSession(null);
-    setReviewFeedback('');
-    setTimeout(() => setToastMsg(''), 4000);
+    setActionLoading(true);
+    try {
+      await completeSession(reviewModalSession.id, reviewRating, reviewFeedback);
+      setToastMsg(`Session completed! +150 XP gained & streak updated.`);
+      setReviewModalSession(null);
+      setReviewFeedback('');
+      setTimeout(() => setToastMsg(''), 4000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCancel = async (sessionId) => {
+    try {
+      await cancelSession(sessionId);
+      setToastMsg('Session cancelled.');
+      setTimeout(() => setToastMsg(''), 3000);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -214,7 +240,7 @@ export default function Sessions() {
 
                           {/* Cancel */}
                           <button
-                            onClick={() => cancelSession(session.id)}
+                            onClick={() => handleCancel(session.id)}
                             className="p-2 rounded-xl border border-border hover:bg-red-500/10 text-xs text-muted-foreground hover:text-red-400 transition-colors"
                             title="Cancel Session"
                           >

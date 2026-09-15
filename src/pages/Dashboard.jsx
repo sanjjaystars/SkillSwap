@@ -13,6 +13,7 @@ import {
   Video,
   BookOpen,
   Tv,
+  Loader2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import SkillTag from '../components/SkillTag';
@@ -21,15 +22,42 @@ import StreakIndicator from '../components/StreakIndicator';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user, peers, scheduleSession, startInstantMeet } = useApp();
+  const { user, peers, scheduleSession, startInstantMeet, dataLoading } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [modalPeer, setModalPeer] = useState(null);
   const [sessionTopic, setSessionTopic] = useState('');
-  const [skillOffered, setSkillOffered] = useState(user.skillsToTeach[0] || 'Python');
+  const [skillOffered, setSkillOffered] = useState('');
   const [sessionDate, setSessionDate] = useState('Tomorrow, 4:00 PM');
   const [sessionDuration, setSessionDuration] = useState('60 mins');
   const [successToast, setSuccessToast] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // Default skill offered to user's first teach skill once loaded
+  React.useEffect(() => {
+    if (user?.skillsToTeach?.length && !skillOffered) {
+      setSkillOffered(user.skillsToTeach[0]);
+    }
+  }, [user, skillOffered]);
+
+  if (!user && dataLoading) {
+    return (
+      <div className="min-h-screen bg-background pt-32 pb-20 flex flex-col items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
+        <p className="text-sm text-muted-foreground">Loading your SkillSwap profile & peers...</p>
+      </div>
+    );
+  }
+
+  const currentUser = user || {
+    id: 'temp',
+    name: 'Friend',
+    level: 1,
+    skillsToTeach: ['Python'],
+    skillsToLearn: ['React'],
+    streakDays: 1,
+    xp: 150,
+  };
 
   const categories = ['All', 'Python & AI', 'Frontend & React', 'UI/UX Design', 'DevOps & Cloud'];
 
@@ -68,31 +96,44 @@ export default function Dashboard() {
     return true;
   });
 
-  const handleBookSession = (e) => {
+  const handleBookSession = async (e) => {
     e.preventDefault();
     if (!modalPeer || !sessionTopic.trim()) return;
 
-    const newSess = scheduleSession(
-      modalPeer.id,
-      sessionTopic,
-      skillOffered,
-      sessionDate,
-      sessionDuration
-    );
+    setActionLoading(true);
+    try {
+      const newSess = await scheduleSession(
+        modalPeer.id,
+        sessionTopic,
+        skillOffered || 'General Mentorship',
+        sessionDate,
+        sessionDuration
+      );
 
-    setSuccessToast(`Session with ${modalPeer.name} scheduled! Google Meet link generated.`);
-    setModalPeer(null);
-    setSessionTopic('');
-    setTimeout(() => setSuccessToast(''), 4000);
+      setSuccessToast(`Session with ${modalPeer.name} scheduled! Google Meet link generated.`);
+      setModalPeer(null);
+      setSessionTopic('');
+      setTimeout(() => setSuccessToast(''), 4000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const handleStartInstantCall = (peer) => {
-    const session = startInstantMeet(
-      peer.id,
-      `Instant 1:1 Skill Exchange with ${peer.name}`
-    );
-    window.open(session.meetUrl, '_blank');
-    navigate(`/room/${session.id}`);
+  const handleStartInstantCall = async (peer) => {
+    try {
+      const session = await startInstantMeet(
+        peer.id,
+        `Instant 1:1 Skill Exchange with ${peer.name}`
+      );
+      if (session?.meetUrl) {
+        window.open(session.meetUrl, '_blank');
+        navigate(`/room/${session.id}`);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -116,21 +157,21 @@ export default function Dashboard() {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                Level {user.level} Mentor
+                Level {currentUser.level} Mentor
               </span>
               <span className="text-xs text-muted-foreground">• Live Matching Active</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-display font-extrabold text-foreground">
-              Welcome back, {user.name}! 👋
+              Welcome back, {currentUser.name}! 👋
             </h1>
             <p className="text-sm text-muted-foreground max-w-xl">
-              You teach <strong className="text-foreground">{user.skillsToTeach.slice(0, 3).join(', ')}</strong>.
+              You teach <strong className="text-foreground">{(currentUser.skillsToTeach || []).slice(0, 3).join(', ')}</strong>.
               Connect directly via Google Meet or schedule a reciprocal learning session below.
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <StreakIndicator streak={user.streakDays} xp={user.xp} />
+            <StreakIndicator streak={currentUser.streakDays || 1} xp={currentUser.xp || 150} />
             <Link
               to="/sessions"
               className="px-4 py-2 rounded-xl bg-primary text-primary-foreground font-semibold text-xs hover:bg-primary/90 transition-all flex items-center gap-2 shadow-md shadow-primary/20"

@@ -15,7 +15,8 @@ export default function Referrals() {
   const { user } = useApp();
   const [copied, setCopied] = useState(false);
 
-  const referralUrl = `https://skillswap.io/join?ref=${user.referralCode}`;
+  const referralCode = user?.referralCode || 'SKILL2026';
+  const referralUrl = `https://skillswap.io/join?ref=${referralCode}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(referralUrl);
@@ -78,7 +79,7 @@ export default function Referrals() {
           <div className="rounded-2xl border border-border/80 bg-card p-5">
             <span className="text-xs text-muted-foreground">Friends Joined</span>
             <p className="text-2xl font-display font-extrabold text-foreground mt-1">
-              {user.referralsCount}
+              {user?.referralsCount || 0}
             </p>
           </div>
           <div className="rounded-2xl border border-border/80 bg-card p-5">

@@ -15,6 +15,13 @@ import { useApp } from '../context/AppContext';
 export default function Progress() {
   const { user } = useApp();
 
+  const currentUser = user || {
+    level: 1,
+    xp: 150,
+    streakDays: 1,
+    sessionsCompleted: 0,
+  };
+
   const milestones = [
     { title: 'First Exchange Complete', date: 'Aug 15, 2026', xp: '+100 XP', achieved: true },
     { title: '7-Day Learning Streak', date: 'Aug 22, 2026', xp: '+250 XP', achieved: true },
@@ -34,9 +41,9 @@ export default function Progress() {
     { day: 'Sun', hours: 2.0, percent: 50 },
   ];
 
-  const currentLevelMinXp = (user.level - 1) * 500;
-  const currentLevelMaxXp = user.level * 500;
-  const progressInLevel = user.xp - currentLevelMinXp;
+  const currentLevelMinXp = (currentUser.level - 1) * 500;
+  const currentLevelMaxXp = currentUser.level * 500;
+  const progressInLevel = currentUser.xp - currentLevelMinXp;
   const levelPercentage = Math.min(100, Math.round((progressInLevel / 500) * 100));
 
   return (
@@ -74,7 +81,7 @@ export default function Progress() {
               <BookOpen className="w-4 h-4 text-emerald-400" />
             </div>
             <p className="text-2xl font-display font-extrabold text-foreground">
-              {user.sessionsCompleted}
+              {currentUser.sessionsCompleted}
             </p>
             <span className="text-[11px] text-muted-foreground mt-1 block">
               100% reciprocal fulfillment
@@ -87,7 +94,7 @@ export default function Progress() {
               <Flame className="w-4 h-4 text-amber-400 fill-amber-400" />
             </div>
             <p className="text-2xl font-display font-extrabold text-amber-400">
-              {user.streakDays} Days
+              {currentUser.streakDays} Days
             </p>
             <span className="text-[11px] text-muted-foreground mt-1 block">
               Personal record: 21 days
@@ -100,7 +107,7 @@ export default function Progress() {
               <Award className="w-4 h-4 text-sky-400" />
             </div>
             <p className="text-2xl font-display font-extrabold text-foreground">
-              {user.xp.toLocaleString()} XP
+              {(currentUser.xp || 0).toLocaleString()} XP
             </p>
             <span className="text-[11px] text-primary font-semibold mt-1 block">
               Rank #1 Global Leaderboard
@@ -116,11 +123,11 @@ export default function Progress() {
                 Current Standing
               </span>
               <h3 className="font-display text-xl font-bold text-foreground mt-0.5">
-                Level {user.level} Master Mentor
+                Level {currentUser.level} Master Mentor
               </h3>
             </div>
             <span className="text-xs font-bold text-muted-foreground">
-              {progressInLevel} / 500 XP to Level {user.level + 1}
+              {progressInLevel} / 500 XP to Level {currentUser.level + 1}
             </span>
           </div>
 

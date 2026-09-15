@@ -21,11 +21,12 @@ import { cn } from '../lib/utils';
 export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isAuthenticated, setIsAuthenticated } = useApp();
+  const { user, isAuthenticated, signOut } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/matches', label: 'Matches', icon: Sparkles },
     { to: '/sessions', label: 'Sessions', icon: Calendar },
     { to: '/chat', label: 'Chat', icon: MessageSquare },
     { to: '/feed', label: 'Feed', icon: Sparkles },
@@ -34,8 +35,12 @@ export default function Navbar() {
     { to: '/announcements', label: 'Notices', icon: Bell },
   ];
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (err) {
+      console.error(err);
+    }
     navigate('/');
   };
 
@@ -86,9 +91,9 @@ export default function Navbar() {
 
         {/* Right Section */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {isAuthenticated ? (
+          {isAuthenticated && user ? (
             <>
-              <StreakIndicator streak={user.streakDays} xp={user.xp} className="hidden sm:inline-flex" />
+              <StreakIndicator streak={user.streakDays || 1} xp={user.xp || 150} className="hidden sm:inline-flex" />
 
               <Link
                 to="/profile"
@@ -99,8 +104,8 @@ export default function Navbar() {
                 title="Your Profile"
               >
                 <img
-                  src={user.avatar}
-                  alt={user.name}
+                  src={user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
+                  alt={user.name || 'User'}
                   className="w-7 h-7 rounded-full object-cover ring-1 ring-border"
                 />
                 <span className="text-xs font-semibold hidden sm:inline text-foreground">
@@ -147,16 +152,22 @@ export default function Navbar() {
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="lg:hidden border-b border-border bg-background/95 backdrop-blur-xl px-4 py-4 space-y-1">
-          <div className="pb-3 mb-2 border-b border-border/60 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full" />
-              <div>
-                <p className="text-sm font-semibold text-foreground">{user.name}</p>
-                <p className="text-xs text-muted-foreground">{user.handle}</p>
+          {user && (
+            <div className="pb-3 mb-2 border-b border-border/60 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <img
+                  src={user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
+                  alt={user.name}
+                  className="w-8 h-8 rounded-full"
+                />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{user.name}</p>
+                  <p className="text-xs text-muted-foreground">{user.handle}</p>
+                </div>
               </div>
+              <StreakIndicator streak={user.streakDays || 1} xp={user.xp || 150} />
             </div>
-            <StreakIndicator streak={user.streakDays} xp={user.xp} />
-          </div>
+          )}
 
           {navLinks.map(({ to, label, icon: Icon }) => (
             <Link

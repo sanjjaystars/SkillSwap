@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import ProtectedRoute from './components/ProtectedRoute';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import Sessions from './pages/Sessions';
@@ -13,6 +14,7 @@ import Progress from './pages/Progress';
 import Profile from './pages/Profile';
 import Referrals from './pages/Referrals';
 import Announcements from './pages/Announcements';
+import MatchEngine from './pages/MatchEngine';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
@@ -31,19 +33,20 @@ export default function App() {
       <main className="flex-1">
         <Routes>
           <Route path="/" element={<Landing />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/sessions" element={<Sessions />} />
-          <Route path="/room" element={<Classroom />} />
-          <Route path="/room/:sessionId" element={<Classroom />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/chat/:userId" element={<Chat />} />
-          <Route path="/feed" element={<Feed />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route path="/progress" element={<Progress />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/referrals" element={<Referrals />} />
-          <Route path="/announcements" element={<Announcements />} />
-          <Route path="/admin/notices" element={<Announcements />} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/sessions" element={<ProtectedRoute><Sessions /></ProtectedRoute>} />
+          <Route path="/room" element={<ProtectedRoute><Classroom /></ProtectedRoute>} />
+          <Route path="/room/:sessionId" element={<ProtectedRoute><Classroom /></ProtectedRoute>} />
+          <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+          <Route path="/chat/:userId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+          <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
+          <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
+          <Route path="/progress" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/referrals" element={<ProtectedRoute><Referrals /></ProtectedRoute>} />
+          <Route path="/announcements" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
+          <Route path="/matches" element={<ProtectedRoute><MatchEngine /></ProtectedRoute>} />
+          <Route path="/admin/notices" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />

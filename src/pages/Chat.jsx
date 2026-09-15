@@ -5,11 +5,8 @@ import {
   Video,
   Calendar,
   Search,
-  CheckCheck,
   ExternalLink,
-  Tv,
-  Sparkles,
-  Phone,
+  Loader2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import StarRating from '../components/StarRating';
@@ -17,18 +14,28 @@ import StarRating from '../components/StarRating';
 export default function Chat() {
   const { userId } = useParams();
   const navigate = useNavigate();
-  const { peers, user, messages, sendMessage, startInstantMeet } = useApp();
-  const [activePeerId, setActivePeerId] = useState(userId || 'peer-prince');
+  const { peers, user, messages, sendMessage, startInstantMeet, loadChatHistory } = useApp();
+  const [activePeerId, setActivePeerId] = useState(userId || (peers[0]?.id || ''));
   const [inputText, setInputText] = useState('');
   const [searchFilter, setSearchFilter] = useState('');
+  const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
 
   // Sync route param
   useEffect(() => {
     if (userId && peers.some((p) => p.id === userId)) {
       setActivePeerId(userId);
+    } else if (!activePeerId && peers.length > 0) {
+      setActivePeerId(peers[0].id);
     }
-  }, [userId, peers]);
+  }, [userId, peers, activePeerId]);
+
+  // Load chat history when peer changes
+  useEffect(() => {
+    if (activePeerId && loadChatHistory) {
+      loadChatHistory(activePeerId);
+    }
+  }, [activePeerId, loadChatHistory]);
 
   const activePeer = peers.find((p) => p.id === activePeerId) || peers[0];
   const thread = messages[activePeerId] || [];
@@ -37,25 +44,40 @@ export default function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [thread]);
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
-    if (!inputText.trim()) return;
-    sendMessage(activePeerId, inputText);
+    if (!inputText.trim() || sending) return;
+    setSending(true);
+    await sendMessage(activePeerId, inputText);
     setInputText('');
+    setSending(false);
   };
 
-  const handleStartGoogleMeet = () => {
-    const session = startInstantMeet(
+  const handleStartGoogleMeet = async () => {
+    if (!activePeer) return;
+    const session = await startInstantMeet(
       activePeerId,
-      `Live Exchange: ${user.skillsToTeach[0]} ↔ ${activePeer.skillsToTeach[0]}`
+      `Live Exchange: ${user?.skillsToTeach?.[0] || 'Skills'} ↔ ${activePeer?.skillsToTeach?.[0] || 'Skills'}`
     );
-    // Open the new Google Meet window in a new tab
-    window.open(session.meetUrl, '_blank');
+    if (session?.meetUrl) {
+      window.open(session.meetUrl, '_blank');
+    }
   };
 
   const filteredPeers = peers.filter((p) =>
     p.name.toLowerCase().includes(searchFilter.toLowerCase())
   );
+
+  if (!activePeer) {
+    return (
+      <div className="min-h-screen bg-background pt-20 pb-12 px-4 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground text-sm">No peers available yet. Start connecting!</p>
+          <Link to="/dashboard" className="text-primary text-xs mt-2 hover:underline">Browse peers →</Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pt-20 pb-12 px-4">
@@ -104,9 +126,6 @@ export default function Chat() {
                         alt={peer.name}
                         className="w-10 h-10 rounded-full object-cover ring-1 ring-border"
                       />
-                      {peer.online && (
-                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
-                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
@@ -122,6 +141,11 @@ export default function Chat() {
                   </button>
                 );
               })}
+              {filteredPeers.length === 0 && (
+                <div className="p-6 text-center text-xs text-muted-foreground">
+                  No peers found
+                </div>
+              )}
             </div>
           </div>
 
@@ -130,23 +154,18 @@ export default function Chat() {
             {/* Header */}
             <div className="h-16 px-4 sm:px-6 border-b border-border/60 flex items-center justify-between bg-card/80 backdrop-blur-md">
               <div className="flex items-center gap-3">
-                <div className="relative">
-                  <img
-                    src={activePeer.avatar}
-                    alt={activePeer.name}
-                    className="w-9 h-9 rounded-full object-cover ring-1 ring-border"
-                  />
-                  {activePeer.online && (
-                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
-                  )}
-                </div>
+                <img
+                  src={activePeer.avatar}
+                  alt={activePeer.name}
+                  className="w-9 h-9 rounded-full object-cover ring-1 ring-border"
+                />
                 <div>
                   <h3 className="font-display text-sm font-bold text-foreground">
                     {activePeer.name}
                   </h3>
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-emerald-400">
-                      {activePeer.online ? 'Online now' : 'Away'}
+                    <span className="text-[11px] text-muted-foreground">
+                      {activePeer.title}
                     </span>
                     <span className="text-muted-foreground/50">•</span>
                     <StarRating rating={activePeer.rating} size="xs" />
@@ -154,7 +173,7 @@ export default function Chat() {
                 </div>
               </div>
 
-              {/* Working Call Actions */}
+              {/* Call Actions */}
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleStartGoogleMeet}
@@ -183,10 +202,16 @@ export default function Chat() {
                 </span>
               </div>
 
+              {thread.length === 0 && (
+                <div className="text-center py-12">
+                  <p className="text-sm text-muted-foreground">No messages yet. Say hello! 👋</p>
+                </div>
+              )}
+
               {thread.map((msg) => {
-                const isMe = msg.senderId === user.id;
+                const isMe = msg.senderId === user?.id;
                 const hasMeetLink = msg.meetUrl || (msg.text && msg.text.includes('meet.google.com'));
-                const meetUrl = msg.meetUrl || (msg.text.match(/https:\/\/meet\.google\.com\/[a-zA-Z0-9-]+/) || [])[0];
+                const meetUrl = msg.meetUrl || (msg.text?.match(/https:\/\/meet\.google\.com\/[a-zA-Z0-9-]+/) || [])[0];
 
                 return (
                   <div
@@ -210,7 +235,6 @@ export default function Chat() {
                     >
                       <p>{msg.text}</p>
 
-                      {/* Prominent Google Meet Join Card if message contains link */}
                       {hasMeetLink && meetUrl && (
                         <div className="mt-3 p-3 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2 text-xs">
@@ -250,18 +274,22 @@ export default function Chat() {
             >
               <input
                 type="text"
-                placeholder={`Ask ${activePeer.name} about lessons, or propose a course exchange...`}
+                placeholder={`Message ${activePeer.name}...`}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 className="flex-1 px-4 py-2.5 rounded-xl bg-secondary/60 border border-border text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               />
               <button
                 type="submit"
-                disabled={!inputText.trim()}
+                disabled={!inputText.trim() || sending}
                 className="p-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-primary/20"
                 title="Send message"
               >
-                <Send className="w-4 h-4" />
+                {sending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
               </button>
             </form>
           </div>

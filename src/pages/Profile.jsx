@@ -14,52 +14,98 @@ import {
 import { useApp } from '../context/AppContext';
 import SkillTag from '../components/SkillTag';
 import StarRating from '../components/StarRating';
+import { Loader2 } from 'lucide-react';
 
 export default function Profile() {
-  const { user, updateProfile } = useApp();
+  const { user, updateProfile, dataLoading } = useApp();
   const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState(user.name);
-  const [title, setTitle] = useState(user.title);
-  const [bio, setBio] = useState(user.bio);
+  const [name, setName] = useState('');
+  const [title, setTitle] = useState('');
+  const [bio, setBio] = useState('');
   const [teachInput, setTeachInput] = useState('');
   const [learnInput, setLearnInput] = useState('');
   const [savedToast, setSavedToast] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const handleAddTeachSkill = (e) => {
+  React.useEffect(() => {
+    if (user) {
+      setName(user.name || '');
+      setTitle(user.title || '');
+      setBio(user.bio || '');
+    }
+  }, [user]);
+
+  if (!user && dataLoading) {
+    return (
+      <div className="min-h-screen bg-background pt-32 pb-20 flex flex-col items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
+        <p className="text-sm text-muted-foreground">Loading your profile...</p>
+      </div>
+    );
+  }
+
+  const currentUser = user || {
+    id: 'guest',
+    name: 'Profile User',
+    title: 'SkillSwap Member',
+    bio: '',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+    skillsToTeach: [],
+    skillsToLearn: [],
+    streakDays: 1,
+    xp: 150,
+    level: 1,
+    rating: 5.0,
+    sessionsCompleted: 0,
+    reviewsCount: 0,
+  };
+
+  const handleAddTeachSkill = async (e) => {
     e.preventDefault();
     if (!teachInput.trim()) return;
-    if (!user.skillsToTeach.includes(teachInput.trim())) {
-      updateProfile({ skillsToTeach: [...user.skillsToTeach, teachInput.trim()] });
+    const currentTeach = currentUser.skillsToTeach || [];
+    if (!currentTeach.includes(teachInput.trim())) {
+      await updateProfile({ skillsToTeach: [...currentTeach, teachInput.trim()] });
     }
     setTeachInput('');
   };
 
-  const handleRemoveTeachSkill = (skill) => {
-    updateProfile({
-      skillsToTeach: user.skillsToTeach.filter((s) => s !== skill),
+  const handleRemoveTeachSkill = async (skill) => {
+    const currentTeach = currentUser.skillsToTeach || [];
+    await updateProfile({
+      skillsToTeach: currentTeach.filter((s) => s !== skill),
     });
   };
 
-  const handleAddLearnSkill = (e) => {
+  const handleAddLearnSkill = async (e) => {
     e.preventDefault();
     if (!learnInput.trim()) return;
-    if (!user.skillsToLearn.includes(learnInput.trim())) {
-      updateProfile({ skillsToLearn: [...user.skillsToLearn, learnInput.trim()] });
+    const currentLearn = currentUser.skillsToLearn || [];
+    if (!currentLearn.includes(learnInput.trim())) {
+      await updateProfile({ skillsToLearn: [...currentLearn, learnInput.trim()] });
     }
     setLearnInput('');
   };
 
-  const handleRemoveLearnSkill = (skill) => {
-    updateProfile({
-      skillsToLearn: user.skillsToLearn.filter((s) => s !== skill),
+  const handleRemoveLearnSkill = async (skill) => {
+    const currentLearn = currentUser.skillsToLearn || [];
+    await updateProfile({
+      skillsToLearn: currentLearn.filter((s) => s !== skill),
     });
   };
 
-  const handleSaveProfile = () => {
-    updateProfile({ name, title, bio });
-    setIsEditing(false);
-    setSavedToast(true);
-    setTimeout(() => setSavedToast(false), 3000);
+  const handleSaveProfile = async () => {
+    setSaving(true);
+    try {
+      await updateProfile({ name, title, bio });
+      setIsEditing(false);
+      setSavedToast(true);
+      setTimeout(() => setSavedToast(false), 3000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -78,8 +124,8 @@ export default function Profile() {
             <div className="flex items-center gap-4 sm:gap-6">
               <div className="relative">
                 <img
-                  src={user.avatar}
-                  alt={user.name}
+                  src={currentUser.avatar}
+                  alt={currentUser.name}
                   className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl object-cover ring-2 ring-primary/40 shadow-xl"
                 />
                 <span className="absolute -bottom-1 -right-1 p-1 rounded-full bg-primary text-primary-foreground">
@@ -90,17 +136,17 @@ export default function Profile() {
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-2xl font-display font-bold text-foreground">
-                    {user.name}
+                    {currentUser.name}
                   </h1>
                   <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
                     Verified Mentor
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{user.title}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{currentUser.title}</p>
                 <div className="flex items-center gap-2 mt-2">
-                  <StarRating rating={user.rating} />
+                  <StarRating rating={currentUser.rating} />
                   <span className="text-xs text-muted-foreground">
-                    ({user.reviewsCount} verified reviews)
+                    ({currentUser.reviewsCount} verified reviews)
                   </span>
                 </div>
               </div>
@@ -131,7 +177,7 @@ export default function Profile() {
                 Completed Exchanges
               </span>
               <p className="text-xl font-display font-extrabold text-foreground mt-1">
-                {user.sessionsCompleted}
+                {currentUser.sessionsCompleted}
               </p>
             </div>
             <div>
@@ -140,7 +186,7 @@ export default function Profile() {
               </span>
               <p className="text-xl font-display font-extrabold text-amber-400 mt-1 flex items-center justify-center gap-1">
                 <Flame className="w-4 h-4 fill-amber-400" />
-                {user.streakDays} Days
+                {currentUser.streakDays} Days
               </p>
             </div>
             <div>
@@ -148,7 +194,7 @@ export default function Profile() {
                 Total XP
               </span>
               <p className="text-xl font-display font-extrabold text-sky-400 mt-1">
-                {user.xp.toLocaleString()}
+                {(currentUser.xp || 0).toLocaleString()}
               </p>
             </div>
             <div>
@@ -156,7 +202,7 @@ export default function Profile() {
                 Platform Level
               </span>
               <p className="text-xl font-display font-extrabold text-foreground mt-1">
-                Level {user.level}
+                Level {currentUser.level}
               </p>
             </div>
           </div>
@@ -174,7 +220,7 @@ export default function Profile() {
                 className="w-full p-3 rounded-xl bg-secondary/50 border border-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               />
             ) : (
-              <p className="text-sm text-foreground/90 leading-relaxed">{user.bio}</p>
+              <p className="text-sm text-foreground/90 leading-relaxed">{currentUser.bio || 'No bio yet. Click Edit Profile to add one!'}</p>
             )}
           </div>
         </div>
@@ -192,7 +238,7 @@ export default function Profile() {
             </p>
 
             <div className="flex flex-wrap gap-2 mb-5 min-h-[50px]">
-              {user.skillsToTeach.map((skill) => (
+              {(currentUser.skillsToTeach || []).map((skill) => (
                 <span
                   key={skill}
                   className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30"
@@ -236,7 +282,7 @@ export default function Profile() {
             </p>
 
             <div className="flex flex-wrap gap-2 mb-5 min-h-[50px]">
-              {user.skillsToLearn.map((skill) => (
+              {(currentUser.skillsToLearn || []).map((skill) => (
                 <span
                   key={skill}
                   className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"

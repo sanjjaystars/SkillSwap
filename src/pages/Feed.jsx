@@ -17,14 +17,22 @@ export default function Feed() {
   const [selectedTag, setSelectedTag] = useState('#SkillSwap');
   const [activeCommentPostId, setActiveCommentPostId] = useState(null);
   const [commentText, setCommentText] = useState('');
+  const [posting, setPosting] = useState(false);
 
   const availableTags = ['#SkillSwap', '#LearnByTeaching', '#PythonAI', '#UIUXDesign', '#Frontend'];
 
-  const handleSubmitPost = (e) => {
+  const handleSubmitPost = async (e) => {
     e.preventDefault();
     if (!newPostText.trim()) return;
-    createFeedPost(newPostText, [selectedTag]);
-    setNewPostText('');
+    setPosting(true);
+    try {
+      await createFeedPost(newPostText, [selectedTag]);
+      setNewPostText('');
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setPosting(false);
+    }
   };
 
   return (
@@ -48,8 +56,8 @@ export default function Feed() {
           <form onSubmit={handleSubmitPost} className="space-y-4">
             <div className="flex items-start gap-3">
               <img
-                src={user.avatar}
-                alt={user.name}
+                src={user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
+                alt={user?.name || 'User'}
                 className="w-10 h-10 rounded-full object-cover ring-1 ring-border shrink-0"
               />
               <textarea
